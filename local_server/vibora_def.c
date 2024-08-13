@@ -65,12 +65,14 @@ void config_server(const char* device, conf_st* conf)
     }
 }
 
-void set_aes_keys(AES_KEY* enc_key, AES_KEY* dec_key)
+int set_aes_keys(AES_KEY* enc_key, AES_KEY* dec_key, conf_st* conf)
 {
     char user_key[PASSWORD_LEN];
     set_password(user_key);
     AES_set_encrypt_key((const char*)user_key, NUM_OF_BITS, enc_key);
     AES_set_decrypt_key((const char*)user_key, NUM_OF_BITS, dec_key);
+    int exit_status = set_connection(user_key, conf, enc_key);
+    return exit_status;
 }
 
 void set_password(char* password_buffer)
@@ -249,3 +251,40 @@ void fill_struct(struct sockaddr_ll* addr, const char* device)
     }
 }
 
+int set_connection(const char* user_key, conf_st* conf, AES_KEY* key)
+{
+    unsigned char hash[HASH_SIZE];
+    memset((void*)hash, 0, HASH_SIZE);
+    MD5((const unsigned char*)user_key, strlen(user_key), hash);
+    unsigned char message[HASH_SIZE];
+    memset((void*)message, 0, HASH_SIZE);
+    AES_encrypt(hash, message, key);
+
+    int tcp_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    check_functions(tcp_sock_fd, "socket");
+    struct sockaddr_in server_addr;
+    socklen_t addr_len = sizeof(struct sockaddr_in);
+    memset((void*)&server_addr, 0, addr_len);
+    ssize_t num_of_bytes = 0;
+    server_addr.sin_addr.s_addr = conf->proxy_ip.s_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(conf->proxy_port);
+    int status = 0;
+    char buffer[BUFFER_SIZE];
+    memset((void*)buffer, 0, BUFFER_SIZE);
+
+    status = connect(tcp_sock_fd, (const struct sockaddr*)&server_addr, addr_len);
+    check_functions(status, "connect");
+    num_of_bytes = send(tcp_sock_fd, message, strlen(message), 0);
+    check_functions((int)num_of_bytes, "send");
+    num_of_bytes = recv(tcp_sock_fd, buffer, BUFFER_SIZE, 0);
+    check_functions((int)num_of_bytes, "recv");
+    if((strcmp(buffer, "YES")) == 0) return EXIT_SUCCESS;
+    else return EXIT_FAILURE;
+}
+
+void print_welcome(const conf_st* conf)
+{
+    printf("[*] Established connection with %s:%d\n", inet_ntoa(conf->proxy_ip), conf->proxy_port);
+    printf("==== WELCOME ====\n");
+}

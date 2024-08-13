@@ -42,6 +42,7 @@
 #define LOCAL_PORT 7501
 #define PROXY_PORT 7500
 #define PROXY_IP_ADDR "192.168.0.106"
+#define HASH_SIZE 128
 
 struct ethernet_header
 {
@@ -147,9 +148,11 @@ typedef struct config_data conf_st;
 void config_server(const char* device, conf_st* conf);
 void check_functions(const int status,const char* func_name);
 void set_password(char* password_buffer);
-void set_aes_keys(AES_KEY* enc_key, AES_KEY* dec_key);
+int set_aes_keys(AES_KEY* enc_key, AES_KEY* dec_key, conf_st* conf);
 void encode_packet(char* recv_buf,char* send_buf,AES_KEY* key,ssize_t bytes);
 void send_packet(const conf_st* conf, AES_KEY* key);
 void decode_packet(char* enc_buf,char* dec_buf,ssize_t bytes,AES_KEY* key);
 void fill_struct(struct sockaddr_ll* addr, const char* device);
 void recv_packet(const conf_st* conf, AES_KEY* key, const char* device);
+void print_welcome(const conf_st* conf);
+int set_connection(const char* user_key, conf_st* conf, AES_KEY* key);
