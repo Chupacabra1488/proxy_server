@@ -41,7 +41,7 @@
 #define DEVICE_LEN 64
 #define LOCAL_PORT 7501
 #define PROXY_PORT 7500
-#define PROXY_IP_ADDR "192.168.0.106"
+#define PROXY_IP_ADDR "192.168.43.29"
 #define HASH_SIZE 128
 
 struct ethernet_header

@@ -279,6 +279,7 @@ int set_connection(const char* user_key, conf_st* conf, AES_KEY* key)
     check_functions((int)num_of_bytes, "send");
     num_of_bytes = recv(tcp_sock_fd, buffer, BUFFER_SIZE, 0);
     check_functions((int)num_of_bytes, "recv");
+    close(tcp_sock_fd);
     if((strcmp(buffer, "YES")) == 0) return EXIT_SUCCESS;
     else return EXIT_FAILURE;
 }

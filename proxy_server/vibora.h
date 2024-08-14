@@ -42,6 +42,7 @@
 #define LOCAL_PORT 7501
 #define PROXY_PORT 7500
 #define HASH_SIZE 128
+#define CONNECTION_PORT 7502
 
 struct ethernet_header
 {

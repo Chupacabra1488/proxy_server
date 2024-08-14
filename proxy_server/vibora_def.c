@@ -112,50 +112,85 @@ int set_connection(conf_st* conf, const unsigned char* hash, AES_KEY* key)
 {
     int tcp_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     check_functions(tcp_sock_fd, "socket");
-    struct sockaddr_in proxy_server_addr;
+    struct sockaddr_in server_addr;
     struct sockaddr_in client_addr;
-    socklen_t addr_len;
-    memset((void*)&proxy_server_addr, 0, addr_len);
+    socklen_t addr_len = sizeof(struct sockaddr_in);
+    memset((void*)&server_addr, 0, addr_len);
     memset((void*)&client_addr, 0, addr_len);
-    proxy_server_addr.sin_addr.s_addr = conf->proxy_ip.s_addr;
-    proxy_server_addr.sin_family = AF_INET;
-    proxy_server_addr.sin_port = htons(PROXY_PORT);
-    int status = bind(tcp_sock_fd, (const struct sockaddr*)&proxy_server_addr,
-    addr_len);
-    check_functions(status, "bind");
+    server_addr.sin_addr.s_addr = conf->proxy_ip.s_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(conf->proxy_port);
+
+    int status;
     const int on = 1;
     status = setsockopt(tcp_sock_fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int));
     check_functions(status, "setsockopt");
+    status = bind(tcp_sock_fd, (const struct sockaddr*)&server_addr, addr_len);
+    check_functions(status, "bind");
     status = listen(tcp_sock_fd, 5);
     check_functions(status, "listen");
+
     int client_sock_fd = accept(tcp_sock_fd, (struct sockaddr*)&client_addr,
     &addr_len);
     check_functions(client_sock_fd, "accept");
+
     char recv_buffer[BUFFER_SIZE];
     char send_buffer[BUFFER_SIZE];
     memset((void*)recv_buffer, 0, BUFFER_SIZE);
     memset((void*)send_buffer, 0, BUFFER_SIZE);
-    ssize_t num_of_bytes = recv(client_sock_fd, recv_buffer, BUFFER_SIZE, 0);
+    ssize_t num_of_bytes = 0;
+
+    num_of_bytes = recv(client_sock_fd, recv_buffer, BUFFER_SIZE, 0);
     check_functions((int)num_of_bytes, "recv");
-    unsigned char recv_hash[HASH_SIZE];
+    char recv_hash[HASH_SIZE];
+    memset(recv_hash, 0, HASH_SIZE);
     AES_decrypt(recv_buffer, recv_hash, key);
     const char* yes = "YES";
     const char* no = "NO";
-    u_int8_t flag = FALSE;
-    if(strcmp(hash, recv_hash) == 0) 
+    int flag = FALSE;
+    if(strcmp(hash, recv_hash) == 0)
     {
-        strncpy(send_buffer, yes, strlen(yes));
         flag = TRUE;
-        conf->local_ip.s_addr = client_addr.sin_addr.s_addr;
+        strncpy(send_buffer, yes, strlen(yes));
     }
-    else
-    {
-        strncpy(send_buffer, no, strlen(no));
-    }
-    num_of_bytes = send(client_sock_fd, send_buffer, strlen(send_buffer), 0);
+    else strncpy(send_buffer, no, strlen(no));
+
+    conf->local_ip.s_addr = client_addr.sin_addr.s_addr;
+
+    num_of_bytes = send(tcp_sock_fd, send_buffer, strlen(send_buffer), 0);
     check_functions((int)num_of_bytes, "send");
-    close(tcp_sock_fd);
+
     close(client_sock_fd);
+    close(tcp_sock_fd);
+
     return flag;
 }
 
+void recv_packets(conf_st* conf, const char* device, AES_KEY* key)
+{
+    int udp_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    check_functions(udp_sock_fd, "socket");
+    struct sockaddr_in udp_server_addr;
+    socklen_t udp_addr_len = sizeof(struct sockaddr_in);
+    memset((void*)&udp_server_addr, 0, udp_addr_len);
+    udp_server_addr.sin_addr.s_addr = conf->proxy_ip.s_addr;
+    udp_server_addr.sin_family = AF_INET;
+    udp_server_addr.sin_port = htons(conf->proxy_port);
+
+    int status = 0;
+    const int on = 1;
+    status = setsockopt(udp_sock_fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int));
+    check_functions(status, "setsockopt");
+    status = bind(udp_sock_fd, (const struct sockaddr*)&udp_server_addr,
+    udp_addr_len);
+    check_functions(status, "bind");
+
+    //BPF should be here.
+
+    int packet_sock_fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+    check_functions(packet_sock_fd, "socket");
+    struct sockaddr_ll packet_server_addr;
+    socklen_t packet_addr_len = sizeof(struct sockaddr_ll);
+    memset((void*)&packet_server_addr, 0, packet_addr_len);
+    
+}

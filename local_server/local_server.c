@@ -13,16 +13,17 @@ int main(int argc, char** argv)
     AES_KEY aes_encrypt_key;
     AES_KEY aes_decrypt_key;
     int connection_status = set_aes_keys(&aes_encrypt_key, &aes_decrypt_key, &conf);
-    if(connection_status == EXIT_FAILURE)
+    if(connection_status == FALSE)
     {
         printf("==== ACCESS DINIED ====.\n");
+        printf("Status:\t%d\n",connection_status);
         exit(EXIT_FAILURE);
     }
     else print_welcome(&conf);
 
-    pid_t pid = fork();
+    /*pid_t pid = fork();
     if(pid) send_packet(&conf, &aes_encrypt_key);
-    else recv_packet(&conf, &aes_decrypt_key, device);
+    else recv_packet(&conf, &aes_decrypt_key, device);*/
 
     return EXIT_SUCCESS;
 }
