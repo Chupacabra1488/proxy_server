@@ -40,9 +40,10 @@
 #define ETHERNET_IPV6 0x86dd
 #define DEVICE_LEN 64
 #define LOCAL_PORT 7501
+#define LOCAL_PORT_R 7502
 #define PROXY_PORT 7500
+#define PROXY_PORT_R 7503
 #define HASH_SIZE 128
-#define CONNECTION_PORT 7502
 
 struct ethernet_header
 {
@@ -129,11 +130,13 @@ struct arp_header
 struct config_data
 {
     struct in_addr local_ip;
-    u_int16_t local_port;
     struct in_addr proxy_ip;
+    u_int16_t local_port;
     u_int16_t proxy_port;
-    u_int8_t local_mac[MAC_ADDR_LEN];
-    u_int8_t router_mac[MAC_ADDR_LEN];
+    u_int16_t local_port_r;
+    u_int16_t proxy_port_r;
+    u_int8_t proxy_mac[MAC_ADDR_LEN];
+    u_int8_t route_mac[MAC_ADDR_LEN];
 };
 
 typedef struct ethernet_header eth_hdr;
@@ -148,5 +151,10 @@ typedef struct config_data conf_st;
 void check_functions(const int status,const char* func_name);
 void set_password(char* password_buffer);
 void set_aes_keys(AES_KEY* enc_key, AES_KEY* dec_key, unsigned char* hash);
-void config_server(const char* device, conf_st* conf);
-int set_connection(conf_st* conf, const unsigned char* hash, AES_KEY* key);
+void config_server(conf_st* conf, const char* device);
+int set_connection(conf_st* conf, AES_KEY* dec_key, const char* hash);
+void fill_struct(struct sockaddr_ll* addr, const char* device);
+void recv_packet_from_local(conf_st* conf, AES_KEY* dec_key, const char* device);
+size_t decode_packet(char* enc_buf, char* dec_buf, ssize_t bytes, AES_KEY* dec_key);
+void print_data(const char* buffer, size_t len);
+void change_addrs(char* buffer, conf_st* conf);

@@ -41,7 +41,8 @@
 #define DEVICE_LEN 64
 #define LOCAL_PORT 7501
 #define PROXY_PORT 7500
-#define PROXY_IP_ADDR "192.168.43.29"
+#define LOCAL_PORT_R 7502
+#define PROXY_PORT_R 7503
 #define HASH_SIZE 128
 
 struct ethernet_header
@@ -129,11 +130,13 @@ struct arp_header
 struct config_data
 {
     struct in_addr local_ip;
-    u_int16_t local_port;
     struct in_addr proxy_ip;
+    u_int16_t local_port;
     u_int16_t proxy_port;
+    u_int16_t local_port_r;
+    u_int16_t proxy_port_r;
     u_int8_t local_mac[MAC_ADDR_LEN];
-    u_int8_t router_mac[MAC_ADDR_LEN];
+    u_int8_t route_mac[MAC_ADDR_LEN];
 };
 
 typedef struct ethernet_header eth_hdr;
@@ -148,11 +151,10 @@ typedef struct config_data conf_st;
 void config_server(const char* device, conf_st* conf);
 void check_functions(const int status,const char* func_name);
 void set_password(char* password_buffer);
-int set_aes_keys(AES_KEY* enc_key, AES_KEY* dec_key, conf_st* conf);
-void encode_packet(char* recv_buf,char* send_buf,AES_KEY* key,ssize_t bytes);
-void send_packet(const conf_st* conf, AES_KEY* key);
-void decode_packet(char* enc_buf,char* dec_buf,ssize_t bytes,AES_KEY* key);
 void fill_struct(struct sockaddr_ll* addr, const char* device);
-void recv_packet(const conf_st* conf, AES_KEY* key, const char* device);
-void print_welcome(const conf_st* conf);
-int set_connection(const char* user_key, conf_st* conf, AES_KEY* key);
+void set_aes_keys(AES_KEY* enc_key, AES_KEY* dec_key, unsigned char* hash);
+int set_connection(conf_st* conf, AES_KEY* enc_key, const char* hash);
+void send_packet_to_proxy(conf_st* conf, AES_KEY* enc_key, const char* device);
+size_t encode_packet(char* recv_buf, char* send_buf, AES_KEY* enc_key, ssize_t bytes);
+void bpf_set_port(const u_int16_t port,const int fd);
+void print_data(const char* buffer, size_t len);

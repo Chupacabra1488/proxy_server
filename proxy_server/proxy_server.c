@@ -2,24 +2,33 @@
 
 int main(int argc, char** argv)
 {
-    AES_KEY aes_encrypt_key;
-    AES_KEY aes_decrypt_key;
-    unsigned char hash[HASH_SIZE];
-    set_aes_keys(&aes_encrypt_key, &aes_decrypt_key, hash);
-    conf_st conf;
     if(argc != 2)
     {
         printf("Enter device's name.\n");
         exit(EXIT_FAILURE);
     }
+    conf_st conf;
     char* device = argv[1];
-    config_server(device, &conf);
-    int status = 0;
+    config_server(&conf, device);
+    AES_KEY aes_encrypt_key;
+    AES_KEY aes_decrypt_key;
+    char hash[HASH_SIZE];
+    set_aes_keys(&aes_encrypt_key, &aes_decrypt_key, hash);
+    
+    int connection_status = 0;
     while(TRUE)
     {
-        status = set_connection(&conf, hash, &aes_decrypt_key);
-        if(status == TRUE) break;
+        connection_status = set_connection(&conf, &aes_decrypt_key, hash);
+        if(connection_status)
+        {
+            printf("==== ==== ACCESS ALLOWED ==== ====\n");
+            printf("[*] Established connection with:\t%s:%d\n",inet_ntoa(conf.local_ip),
+            ntohs(conf.local_port));
+            break;
+        }
     }
+
+    recv_packet_from_local(&conf, &aes_decrypt_key, device);
 
     return EXIT_SUCCESS;
 }
