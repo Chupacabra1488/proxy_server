@@ -275,3 +275,75 @@ void print_data(const char* buffer, size_t len)
     }
     printf("\n");
 }
+
+size_t decode_packet(char* enc_buf, char* dec_buf, ssize_t bytes, AES_KEY* dec_key)
+{
+    memset((void*)dec_buf, 0, BUFFER_SIZE);
+    unsigned int data_offset = 0;
+    unsigned int num_of_blocks = bytes / 16;
+    if(bytes % 16) num_of_blocks++;
+
+    for(size_t i = 0; i < num_of_blocks; ++i)
+    {
+        AES_decrypt(enc_buf + data_offset, dec_buf + data_offset, dec_key);
+        data_offset += 16;
+    }
+    size_t data_len = num_of_blocks * 16;
+    return data_len;
+}
+
+void recv_packet_from_proxy(conf_st* conf, AES_KEY* dec_key, const char* device)
+{
+    int udp_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    check_functions(udp_sock_fd, "socket");
+    struct sockaddr_in local_addr;
+    socklen_t udp_addr_len = sizeof(struct sockaddr_in);
+    memset((void*)&local_addr, 0, udp_addr_len);
+    local_addr.sin_addr.s_addr = conf->local_ip.s_addr;
+    local_addr.sin_family = AF_INET;
+    local_addr.sin_port = conf->local_port_r;
+    char recv_buffer[BUFFER_SIZE];
+    int status = 0;
+    const int on = 1;
+    status = setsockopt(udp_sock_fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int));
+    check_functions(status, "setsockopt");
+    status = bind(udp_sock_fd, (const struct sockaddr*)&local_addr, udp_addr_len);
+    check_functions(status, "bind");
+
+    int packet_sock_fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+    check_functions(packet_sock_fd, "socket");
+    struct sockaddr_ll packet_addr;
+    socklen_t pack_addr_len = sizeof(struct sockaddr_ll);
+    fill_struct(&packet_addr, device);
+    char send_buffer[BUFFER_SIZE];
+
+    size_t data_len = 0;
+    ssize_t num_of_bytes = 0;
+
+    while(TRUE)
+    {
+        memset((void*)recv_buffer, 0, BUFFER_SIZE);
+        num_of_bytes = recvfrom(udp_sock_fd, recv_buffer, BUFFER_SIZE, 0, NULL, NULL);
+        check_functions((int)num_of_bytes, "recvfrom");
+        data_len = decode_packet(recv_buffer, send_buffer, num_of_bytes, dec_key);
+        change_addrs(send_buffer, conf);
+        num_of_bytes = sendto(packet_sock_fd, send_buffer, data_len, 0,
+        (const struct sockaddr*)&packet_addr, pack_addr_len);
+        check_functions((int)num_of_bytes, "sendto");
+    }
+    close(udp_sock_fd);
+    close(packet_sock_fd);
+}
+
+void change_addrs(char* buffer, conf_st* conf)
+{
+    eth_hdr* eth = (eth_hdr*)buffer;
+    size_t eth_len = sizeof(eth_hdr);
+    for(size_t i = 0; i < MAC_ADDR_LEN; ++i)
+    {
+        eth->dest_addr[i] = conf->local_mac[i];
+        eth->source_addr[i] = conf->route_mac[i];
+    }
+    ip_hdr* ip = (ip_hdr*)(buffer + eth_len);
+    ip->dest_addr.s_addr = conf->local_ip.s_addr;
+}

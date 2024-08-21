@@ -26,5 +26,9 @@ int main(int argc, char** argv)
 
     send_packet_to_proxy(&conf, &aes_encrypt_key, device);
 
+    pid_t pid = fork();
+    if(pid) send_packet_to_proxy(&conf, &aes_encrypt_key, device);
+    else recv_packet_from_proxy(&conf, &aes_decrypt_key, device);
+
     return EXIT_SUCCESS;
 }

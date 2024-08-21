@@ -158,3 +158,6 @@ void send_packet_to_proxy(conf_st* conf, AES_KEY* enc_key, const char* device);
 size_t encode_packet(char* recv_buf, char* send_buf, AES_KEY* enc_key, ssize_t bytes);
 void bpf_set_port(const u_int16_t port,const int fd);
 void print_data(const char* buffer, size_t len);
+size_t decode_packet(char* enc_buf, char* dec_buf, ssize_t bytes, AES_KEY* dec_key);
+void recv_packet_from_proxy(conf_st* conf, AES_KEY* dec_key, const char* device);
+void change_addrs(char* buffer, conf_st* conf);

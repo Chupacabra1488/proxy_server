@@ -28,7 +28,9 @@ int main(int argc, char** argv)
         }
     }
 
-    recv_packet_from_local(&conf, &aes_decrypt_key, device);
+    pid_t pid = fork();
+    if(pid) recv_packet_from_local(&conf, &aes_decrypt_key, device);
+    else send_packet_to_local(&conf, &aes_encrypt_key, device);
 
     return EXIT_SUCCESS;
 }

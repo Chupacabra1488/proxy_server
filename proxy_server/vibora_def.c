@@ -299,3 +299,52 @@ void print_data(const char* buffer, size_t len)
     }
     printf("\n");
 }
+
+size_t encode_packet(char* recv_buf, char* send_buf, AES_KEY* enc_key, ssize_t bytes)
+{
+    memset((void*)send_buf, 0, BUFFER_SIZE);
+    unsigned int data_offset = 0;
+    unsigned int num_of_blocks = bytes / 16;
+    if(bytes % 16) num_of_blocks++;
+    size_t data_len = num_of_blocks * 16;
+    for(size_t i = 0; i < num_of_blocks; ++i)
+    {
+        AES_encrypt(recv_buf + data_offset, send_buf + data_offset, enc_key);
+        data_offset += 16;
+    }
+    return data_len;
+}
+
+void send_packet_to_local(conf_st* conf, AES_KEY* enc_key, const char* device)
+{
+    int packet_sock_fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+    check_functions(packet_sock_fd, "packet socket");
+    char recv_buffer[BUFFER_SIZE];
+
+    //BPF is here
+
+    int udp_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    check_functions(udp_sock_fd, "udp socket");
+    struct sockaddr_in local_addr;
+    socklen_t udp_addr_len = sizeof(struct sockaddr_in);
+    memset((void*)&local_addr, 0, udp_addr_len);
+    local_addr.sin_addr.s_addr = conf->local_ip.s_addr;
+    local_addr.sin_family = AF_INET;
+    local_addr.sin_port = conf->local_port_r;
+    char send_buffer[BUFFER_SIZE];
+
+    ssize_t num_of_bytes = 0;
+    size_t data_len = 0;
+    while(TRUE)
+    {
+        memset((void*)recv_buffer, 0, BUFFER_SIZE);
+        num_of_bytes = recvfrom(packet_sock_fd, recv_buffer, BUFFER_SIZE, 0, NULL, NULL);
+        check_functions((int)num_of_bytes, "recvfrom");
+        data_len = encode_packet(recv_buffer, send_buffer, enc_key, num_of_bytes);
+        num_of_bytes = sendto(udp_sock_fd, send_buffer, data_len, 0,
+        (const struct sockaddr*)&local_addr, udp_addr_len);
+        check_functions((int)num_of_bytes, "sendto");
+    }
+    close(packet_sock_fd);
+    close(udp_sock_fd);
+}
