@@ -160,3 +160,4 @@ void print_data(const char* buffer, size_t len);
 void change_addrs(char* buffer, conf_st* conf);
 size_t encode_packet(char* recv_buf, char* send_buf, AES_KEY* enc_key, ssize_t bytes);
 void send_packet_to_local(conf_st* conf, AES_KEY* enc_key, const char* device);
+void bpf_set_addrs(conf_st* conf, const int sock_fd);

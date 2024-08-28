@@ -348,3 +348,29 @@ void send_packet_to_local(conf_st* conf, AES_KEY* enc_key, const char* device)
     close(packet_sock_fd);
     close(udp_sock_fd);
 }
+
+void bpf_set_addrs(conf_st* conf, const int sock_fd)
+{
+    u_int32_t local_addr = ntohl(conf->local_ip.s_addr);
+    u_int32_t proxy_addr = ntohl(conf->proxy_ip.s_addr);
+
+    struct sock_filter code[] = {
+        BPF_STMT(BPF_LD + BPF_H + BPF_ABS, 12),
+        BPF_JUMP(BPF_JMP + BPF_JEQ +BPF_K, ETHERNET_IP, 0, 7),
+        BPF_STMT(BPF_LD + BPF_W + BPF_ABS, 26),
+        BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, local_addr, 3, 0),
+        BPF_STMT(BPF_LD + BPF_W + BPF_ABS, 30),
+        BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, proxy_addr, 0, 1),
+        BPF_STMT(BPF_RET +BPF_K, 1500),
+        BPF_STMT(BPF_RET + BPF_K, 0)
+    };
+
+    struct sock_fprog prog = {
+        .len = 8,
+        .filter = code
+    };
+
+    int status = 0;
+    status = setsockopt(sock_fd, SOL_SOCKET, SO_ATTACH_FILTER, &prog, sizeof(prog));
+    check_functions(status, "setsockopt");
+}
